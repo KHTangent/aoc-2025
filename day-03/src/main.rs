@@ -1,30 +1,34 @@
 use std::fs;
 
+fn largest_subset_of_n(line: &str, digits: usize) -> i64 {
+	let mut total: i64 = 0;
+	let mut to_skip = 0;
+	for skip_end in (0..digits).rev() {
+		let (digit_index, digit) = line
+			.chars()
+			.take(line.len() - skip_end)
+			.enumerate()
+			.skip(to_skip)
+			.fold((0, '0'), |acc, el| if acc.1 < el.1 { el } else { acc });
+		let digit = digit.to_digit(10).unwrap() as i64;
+		total = total * 10 + digit;
+		to_skip = digit_index + 1;
+	}
+	total
+}
+
 fn solution(input: &String) -> i64 {
 	let mut sum: i64 = 0;
 	for line in input.lines() {
-		let (first_digit_index, first_digit) = line
-			.chars()
-			.take(line.len() - 1)
-			.enumerate()
-			.fold((0, '0'), |acc, el| if acc.1 < el.1 { el } else { acc });
-		let largest_after_first_digit = line
-			.chars()
-			.skip(first_digit_index + 1)
-			.fold('0', |acc, el| el.max(acc));
-		let jolts = format!("{}{}", first_digit, largest_after_first_digit)
-			.parse::<i64>()
-			.unwrap();
-		sum += jolts;
+		sum += largest_subset_of_n(line, 2);
 	}
 	sum
 }
 
 fn solution2(input: &String) -> i64 {
-	let mut sum = 0;
+	let mut sum: i64 = 0;
 	for line in input.lines() {
-		let num = line.parse::<i64>().unwrap_or(0);
-		sum += num;
+		sum += largest_subset_of_n(line, 12);
 	}
 	sum
 }
