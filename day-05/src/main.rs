@@ -1,5 +1,6 @@
 use std::fs;
 
+#[derive(Debug)]
 struct Range {
 	min: i64,
 	max: i64,
@@ -10,6 +11,16 @@ impl Range {
 	}
 	fn has(&self, val: i64) -> bool {
 		val >= self.min && val <= self.max
+	}
+	fn overlaps(&self, other: &Range) -> bool {
+		(self.max >= other.min && self.min <= other.min)
+			|| (other.max >= self.min && other.min <= self.min)
+	}
+	fn combine(&self, other: &Range) -> Range {
+		Range::new(self.min.min(other.min), self.max.max(other.max))
+	}
+	fn size(&self) -> i64 {
+		self.max - self.min + 1
 	}
 }
 
@@ -28,12 +39,31 @@ fn solution(input: &String) -> i64 {
 }
 
 fn solution2(input: &String) -> i64 {
-	let mut sum = 0;
-	for line in input.lines() {
-		let num = line.parse::<i64>().unwrap_or(0);
-		sum += num;
+	let (fresh_ranges, _) = input.split_once("\n\n").unwrap();
+	let mut ranges: Vec<Range> = vec![];
+	for raw_range in fresh_ranges.lines() {
+		let (min, max) = raw_range.split_once("-").unwrap();
+		ranges.push(Range::new(min.parse().unwrap(), max.parse().unwrap()));
 	}
-	sum
+	ranges.sort_by_key(|r| r.min);
+	let mut i = 0;
+	while i < ranges.len() - 1 {
+		let mut j = i + 1;
+		let mut changes = false;
+		while j < ranges.len() {
+			if ranges[i].overlaps(&ranges[j]) {
+				let removed = ranges.remove(j);
+				ranges[i] = ranges[i].combine(&removed);
+				changes = true;
+			} else {
+				j += 1;
+			}
+		}
+		if !changes {
+			i += 1;
+		}
+	}
+	ranges.iter().map(|r| r.size()).sum()
 }
 
 #[cfg(test)]
@@ -60,10 +90,9 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore]
 	fn test_solution2() {
-		let answer = solution(&TEST_INPUT.to_string());
-		assert_eq!(answer, 6);
+		let answer = solution2(&TEST_INPUT.to_string());
+		assert_eq!(answer, 14);
 	}
 }
 
