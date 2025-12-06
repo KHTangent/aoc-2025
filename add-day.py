@@ -7,7 +7,7 @@ from sys import argv
 
 file_main_rs = """use std::fs;
 
-fn solution(input: &String) -> i64 {
+fn solution(input: &str) -> i64 {
 	let mut sum = 0;
 	for line in input.lines() {
 		let num = line.parse::<i64>().unwrap_or(0);
@@ -16,7 +16,7 @@ fn solution(input: &String) -> i64 {
 	sum
 }
 
-fn solution2(input: &String) -> i64 {
+fn solution2(input: &str) -> i64 {
 	let mut sum = 0;
 	for line in input.lines() {
 		let num = line.parse::<i64>().unwrap_or(0);
@@ -29,20 +29,20 @@ fn solution2(input: &String) -> i64 {
 mod tests {
 	use super::*;
 
+	const TEST_INPUT: &str = r"2
+4
+";
+
 	#[test]
 	fn test_solution() {
-		let input = String::from(r"
-");
-		let answer = solution(&input);
+		let answer = solution(TEST_INPUT);
 		assert_eq!(answer, 6);
 	}
 
 	#[test]
+	#[ignore]
 	fn test_solution2() {
-		let input = String::from(r"2
-4
-");
-		let answer = solution2(&input);
+		let answer = solution2(TEST_INPUT);
 		assert_eq!(answer, 6);
 	}
 }
