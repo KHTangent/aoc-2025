@@ -17,47 +17,71 @@ impl Junction {
 			circuit: None,
 		}
 	}
-	fn distance_to(&self, other: &Junction) -> i64 {
+	fn distance_to(&self, other: &Junction) -> f64 {
 		f64::sqrt(
 			(self.pos.0 - other.pos.0).pow(2) as f64
 				+ (self.pos.1 - other.pos.1).pow(2) as f64
 				+ (self.pos.2 - other.pos.2).pow(2) as f64,
 		)
-		.round() as i64
 	}
 }
 
-fn solution(input: &str) -> i64 {
+fn solution(input: &str, connections: i64) -> i64 {
 	let mut junctions: Vec<Junction> = input.lines().map(Junction::from_str).collect();
+	let mut all_distances: Vec<(usize, usize, f64)> = Vec::with_capacity(junctions.len().pow(2));
+	for i in 0..junctions.len() {
+		all_distances.extend(
+			junctions
+				.iter()
+				.enumerate()
+				.filter(|(index, _)| i != *index)
+				.map(|(index, j)| (i, index, j.distance_to(&junctions[i]))),
+		);
+	}
 	let mut circuits_device_count: Vec<i64> = vec![];
-	for i in 0..(junctions.len() - 1) {
-		if junctions[i].circuit.is_some() {
-			continue;
+	all_distances.sort_by(|a, b| a.2.total_cmp(&b.2));
+	let mut taken = 0;
+	for (i, j, _) in all_distances {
+		if connections == taken {
+			break;
 		}
-		let mut shortest_distance = i64::MAX;
-		let mut shortest_distance_index = 0;
-		for j in 0..junctions.len() {
-			if i == j {
-				continue;
+		taken += 1;
+		match (junctions[i].circuit, junctions[j].circuit) {
+			(Some(s1), Some(s2)) => {
+				if s1 == s2 {
+					taken -= 1;
+					continue;
+				}
+				let mut changed = 0;
+				for k in 0..junctions.len() {
+					if junctions[k].circuit == Some(s2) {
+						junctions[k].circuit = Some(s1);
+						changed += 1;
+					}
+				}
+				circuits_device_count[s2] = 0;
+				circuits_device_count[s1] += changed - 1;
 			}
-			let distance = junctions[i].distance_to(&junctions[j]);
-			if distance < shortest_distance {
-				shortest_distance = distance;
-				shortest_distance_index = j;
-			}
-		}
-		match junctions[shortest_distance_index].circuit {
-			Some(circuit) => {
-				junctions[i].circuit = Some(circuit);
-				circuits_device_count[circuit] += 1;
-			},
-			None => {
+			(None, None) => {
+				junctions[i].circuit = Some(circuits_device_count.len());
+				junctions[j].circuit = Some(circuits_device_count.len());
 				circuits_device_count.push(2);
-				junctions[i].circuit = Some(circuits_device_count.len()-1);
-				junctions[shortest_distance_index].circuit = Some(circuits_device_count.len()-1);
-			},
+			}
+			(None, Some(s)) => {
+				junctions[i].circuit = Some(s);
+				circuits_device_count[s] += 1;
+			}
+			(Some(s), None) => {
+				junctions[j].circuit = Some(s);
+				circuits_device_count[s] += 1;
+			}
 		}
 	}
+	circuits_device_count.sort();
+	for j in junctions.iter() {
+		println!("{:?}", j);
+	}
+	println!("{:?}", circuits_device_count);
 	circuits_device_count.iter().rev().take(3).product()
 }
 
@@ -98,7 +122,7 @@ mod tests {
 
 	#[test]
 	fn test_solution() {
-		let answer = solution(TEST_INPUT);
+		let answer = solution(TEST_INPUT, 10);
 		assert_eq!(answer, 40);
 	}
 
@@ -118,7 +142,7 @@ fn get_entire_input_file() -> String {
 
 fn main() {
 	let file = get_entire_input_file();
-	let answer = solution(&file);
+	let answer = solution(&file, 1000);
 	println!("Answer task 1: {}", answer);
 	let answer = solution2(&file);
 	println!("Answer task 2: {}", answer);
