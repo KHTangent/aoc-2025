@@ -54,15 +54,17 @@ fn solution(input: &str, connections: usize) -> i64 {
 		}
 		let c1 = junctions[i].circuit;
 		let c2 = junctions[j].circuit;
-		let mut changed = 0;
-		for k in 0..junctions.len() {
-			if junctions[k].circuit == c2 {
-				junctions[k].circuit = c1;
-				changed += 1;
+		if c1 != c2 {
+			let mut changed = 0;
+			for k in 0..junctions.len() {
+				if junctions[k].circuit == c2 {
+					junctions[k].circuit = c1;
+					changed += 1;
+				}
 			}
+			circuits_device_count[c2] = 0;
+			circuits_device_count[c1] += changed;
 		}
-		circuits_device_count[c2] = 0;
-		circuits_device_count[c1] += changed;
 		connections_made.push((i, j));
 	}
 
@@ -71,12 +73,49 @@ fn solution(input: &str, connections: usize) -> i64 {
 }
 
 fn solution2(input: &str) -> i64 {
-	let mut sum = 0;
-	for line in input.lines() {
-		let num = line.parse::<i64>().unwrap_or(0);
-		sum += num;
+	let mut junctions: Vec<Junction> = input.lines().map(Junction::from_str).collect();
+	let mut all_distances: Vec<(usize, usize, f64)> = Vec::with_capacity(junctions.len().pow(2));
+	for i in 0..junctions.len() {
+		junctions[i].circuit = i;
 	}
-	sum
+
+	for i in 0..junctions.len() {
+		all_distances.extend(
+			junctions
+				.iter()
+				.enumerate()
+				.filter(|(index, _)| i != *index)
+				.map(|(index, j)| (i, index, junctions[i].distance_to(&j))),
+		);
+	}
+	all_distances.sort_by(|a, b| a.2.total_cmp(&b.2));
+
+	let mut circuits_device_count: Vec<i64> = vec![1; junctions.len()];
+	let mut connections_made: Vec<(usize, usize)> = vec![];
+	for (i, j, _) in all_distances {
+		if connections_made.contains(&(i, j)) || connections_made.contains(&(j, i)) {
+			continue;
+		}
+		let c1 = junctions[i].circuit;
+		let c2 = junctions[j].circuit;
+		if c1 != c2 {
+			let mut changed = 0;
+			for k in 0..junctions.len() {
+				if junctions[k].circuit == c2 {
+					junctions[k].circuit = c1;
+					changed += 1;
+				}
+			}
+			circuits_device_count[c2] = 0;
+			circuits_device_count[c1] += changed;
+		}
+		connections_made.push((i, j));
+		if *circuits_device_count.iter().max().unwrap() == junctions.len() as i64 {
+			break;
+		}
+	}
+	let last_connection = connections_made[connections_made.len() - 1];
+	junctions[last_connection.0].pos.0 * junctions[last_connection.1].pos.0
 }
 
 #[cfg(test)]
@@ -112,10 +151,9 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore]
 	fn test_solution2() {
 		let answer = solution2(TEST_INPUT);
-		assert_eq!(answer, 6);
+		assert_eq!(answer, 25272);
 	}
 }
 
