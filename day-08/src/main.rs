@@ -3,7 +3,7 @@ use std::fs;
 #[derive(Debug)]
 struct Junction {
 	pos: (i64, i64, i64),
-	circuit: Option<usize>,
+	circuit: usize,
 }
 impl Junction {
 	fn from_str(s: &str) -> Self {
@@ -14,74 +14,59 @@ impl Junction {
 				parts.next().unwrap(),
 				parts.next().unwrap(),
 			),
-			circuit: None,
+			circuit: 0,
 		}
 	}
 	fn distance_to(&self, other: &Junction) -> f64 {
-		f64::sqrt(
-			(self.pos.0 - other.pos.0).pow(2) as f64
-				+ (self.pos.1 - other.pos.1).pow(2) as f64
-				+ (self.pos.2 - other.pos.2).pow(2) as f64,
-		)
+		let dx = (self.pos.0 as f64) - (other.pos.0 as f64);
+		let dy = (self.pos.1 as f64) - (other.pos.1 as f64);
+		let dz = (self.pos.2 as f64) - (other.pos.2 as f64);
+		f64::sqrt(dx.powf(2.0) + dy.powf(2.0) + dz.powf(2.0))
 	}
 }
 
-fn solution(input: &str, connections: i64) -> i64 {
+fn solution(input: &str, connections: usize) -> i64 {
 	let mut junctions: Vec<Junction> = input.lines().map(Junction::from_str).collect();
 	let mut all_distances: Vec<(usize, usize, f64)> = Vec::with_capacity(junctions.len().pow(2));
+	for i in 0..junctions.len() {
+		junctions[i].circuit = i;
+	}
+
 	for i in 0..junctions.len() {
 		all_distances.extend(
 			junctions
 				.iter()
 				.enumerate()
 				.filter(|(index, _)| i != *index)
-				.map(|(index, j)| (i, index, j.distance_to(&junctions[i]))),
+				.map(|(index, j)| (i, index, junctions[i].distance_to(&j))),
 		);
 	}
-	let mut circuits_device_count: Vec<i64> = vec![];
 	all_distances.sort_by(|a, b| a.2.total_cmp(&b.2));
-	let mut taken = 0;
+
+	let mut circuits_device_count: Vec<i64> = vec![1; junctions.len()];
+	let mut connections_made: Vec<(usize, usize)> = Vec::with_capacity(connections);
 	for (i, j, _) in all_distances {
-		if connections == taken {
+		if connections_made.len() >= connections {
 			break;
 		}
-		taken += 1;
-		match (junctions[i].circuit, junctions[j].circuit) {
-			(Some(s1), Some(s2)) => {
-				if s1 == s2 {
-					taken -= 1;
-					continue;
-				}
-				let mut changed = 0;
-				for k in 0..junctions.len() {
-					if junctions[k].circuit == Some(s2) {
-						junctions[k].circuit = Some(s1);
-						changed += 1;
-					}
-				}
-				circuits_device_count[s2] = 0;
-				circuits_device_count[s1] += changed - 1;
-			}
-			(None, None) => {
-				junctions[i].circuit = Some(circuits_device_count.len());
-				junctions[j].circuit = Some(circuits_device_count.len());
-				circuits_device_count.push(2);
-			}
-			(None, Some(s)) => {
-				junctions[i].circuit = Some(s);
-				circuits_device_count[s] += 1;
-			}
-			(Some(s), None) => {
-				junctions[j].circuit = Some(s);
-				circuits_device_count[s] += 1;
+		if connections_made.contains(&(i, j)) || connections_made.contains(&(j, i)) {
+			continue;
+		}
+		let c1 = junctions[i].circuit;
+		let c2 = junctions[j].circuit;
+		let mut changed = 0;
+		for k in 0..junctions.len() {
+			if junctions[k].circuit == c2 {
+				junctions[k].circuit = c1;
+				changed += 1;
 			}
 		}
+		circuits_device_count[c2] = 0;
+		circuits_device_count[c1] += changed;
+		connections_made.push((i, j));
 	}
+
 	circuits_device_count.sort();
-	for j in junctions.iter() {
-		println!("{:?}", j);
-	}
-	println!("{:?}", circuits_device_count);
 	circuits_device_count.iter().rev().take(3).product()
 }
 
